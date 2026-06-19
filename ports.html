@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top 5 European Ports</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { margin:0; height:100%; background:#0a0a0f; }
+  #map { position:fixed; inset:0; background:#0a0a0f; }
+  .banner { position:fixed; top:3.5vmin; left:0; right:0; z-index:1000; text-align:center;
+    font-family:-apple-system,system-ui,sans-serif; color:#ECECF1; pointer-events:none; }
+  .banner .eyebrow { letter-spacing:.3em; font-size:1.6vmin; color:#19E3B1; text-transform:uppercase; }
+  .banner h1 { margin:.4vmin 0 0; font-size:4vmin; }
+  .banner .sub { font-size:1.8vmin; opacity:.6; }
+  .pin { display:flex; align-items:center; justify-content:center; width:4.2vmin; height:4.2vmin;
+    background:#19E3B1; color:#06231c; border:0.3vmin solid #0a0a0f; border-radius:50%;
+    font:700 2.2vmin/1 -apple-system,system-ui,sans-serif; box-shadow:0 0 0 0.4vmin rgba(25,227,177,.3); }
+  .leaflet-tooltip.port { background:rgba(10,10,15,.85); border:1px solid rgba(25,227,177,.4);
+    color:#ECECF1; font-family:-apple-system,system-ui,sans-serif; font-size:1.7vmin; border-radius:.6vmin;
+    box-shadow:none; }
+  .leaflet-tooltip.port b { color:#19E3B1; }
+  .leaflet-control-attribution { font-size:1.1vmin; background:rgba(10,10,15,.6); color:#888; }
+  .leaflet-control-attribution a { color:#aaa; }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <div class="eyebrow">Storm · maps</div>
+    <h1>Top 5 European ports</h1>
+    <div class="sub">by container throughput (TEU)</div>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var ports = [
+      { rank:1, name:"Rotterdam",        country:"Netherlands", teu:"~14.5M TEU", ll:[51.95, 4.14] },
+      { rank:2, name:"Antwerp-Bruges",   country:"Belgium",     teu:"~13.5M TEU", ll:[51.28, 4.33] },
+      { rank:3, name:"Hamburg",          country:"Germany",     teu:"~8.3M TEU",  ll:[53.53, 9.93] },
+      { rank:4, name:"Piraeus",          country:"Greece",      teu:"~5.0M TEU",  ll:[37.94, 23.64] },
+      { rank:5, name:"Valencia",         country:"Spain",       teu:"~4.9M TEU",  ll:[39.44, -0.32] }
+    ];
+
+    var map = L.map('map', { zoomControl:false, attributionControl:true, scrollWheelZoom:false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains:'abcd', maxZoom:19,
+      attribution:'&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    var pts = [];
+    ports.forEach(function(p) {
+      pts.push(p.ll);
+      L.marker(p.ll, {
+        icon: L.divIcon({ className:'', html:'<div class="pin">'+p.rank+'</div>', iconSize:[0,0] })
+      }).addTo(map).bindTooltip(
+        '<b>#'+p.rank+' '+p.name+'</b><br>'+p.country+' · '+p.teu,
+        { permanent:true, direction:'top', className:'port', offset:[0,-12] }
+      );
+    });
+
+    map.fitBounds(pts, { padding:[90, 90] });
+  </script>
+</body>
+</html>
