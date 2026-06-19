@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storm TV</title>
+<!-- receiver v2: page/srcdoc -->
 <style>
   html, body { margin: 0; height: 100%; background: #0a0a0f; color: #ECECF1;
     font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; overflow: hidden; }
@@ -51,9 +52,15 @@
       case 'image': {
         const i = document.createElement('img'); i.src = msg.url; mount(i); break;
       }
-      case 'html': {                                  // a rendered card / diagram fragment
+      case 'html': {                                  // a rendered card / diagram fragment (no JS)
         const d = document.createElement('div'); d.className = 'card';
         d.innerHTML = msg.html || ''; mount(d); break;
+      }
+      case 'page': {                                  // a FULL html doc sent over the channel — JS RUNS, nothing hosted
+        const f = document.createElement('iframe');   // srcdoc → private + dynamic (vs 'url' which is public/hosted)
+        f.srcdoc = msg.html || '';
+        f.allow = 'autoplay; fullscreen; encrypted-media; gamepad; microphone; camera';
+        mount(f); break;
       }
       case 'clear':
       default: {
