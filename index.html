@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storm TV</title>
-<!-- receiver v2: page/srcdoc -->
+<!-- receiver v3: page/srcdoc + wakelock -->
 <style>
   html, body { margin: 0; height: 100%; background: #0a0a0f; color: #ECECF1;
     font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; overflow: hidden; }
@@ -86,6 +86,31 @@
   });
   // Stay alive between messages (this is a persistent canvas, not a media session).
   context.start({ disableIdleTimeout: true });
+
+  // Keep the TV awake. Non-media receivers otherwise drop to the device's ambient
+  // / backdrop screensaver after ~30s. Best-effort: Screen Wake Lock (re-acquired
+  // when we become visible again) + a silent looping media element so the device
+  // registers an active session. If the device still screensavers, raise its
+  // ambient/backdrop delay in Google Home / Google-TV settings (the sure fix).
+  let wakeLock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+    catch (e) { console.warn('wakeLock unavailable', e); }
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') keepAwake();
+  });
+  // 1x1 silent looping video — a no-op "active session" hint for the device.
+  try {
+    const keep = document.createElement('video');
+    keep.muted = true; keep.loop = true; keep.autoplay = true; keep.playsInline = true;
+    keep.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0.01;pointer-events:none;left:0;bottom:0;';
+    // tiny silent webm (1 frame), data URI — no network
+    keep.src = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEAAAAAAAHTEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHGTbuMU6uEElTDZ1OsggEXTbuMU6uEHFO7a1OsghV17AEAAAAAAAAZQAAAAAAAAA';
+    document.body.appendChild(keep);
+    keep.play().catch(() => {});
+  } catch (e) {}
 </script>
 </body>
 </html>
