@@ -41,8 +41,9 @@
       { rank:5, name:"Valencia",         country:"Spain",       teu:"~4.9M TEU",  ll:[39.44, -0.32] }
     ];
 
-    // ports v2: tiles param  (?tiles=satellite | dark[default])
-    var style = (new URLSearchParams(location.search).get('tiles') || 'dark').toLowerCase();
+    // ports v3: tiles + focus params  (?tiles=satellite|dark, ?focus=<port>, ?z=<zoom>)
+    var qs = new URLSearchParams(location.search);
+    var style = (qs.get('tiles') || 'dark').toLowerCase();
     var map = L.map('map', { zoomControl:false, attributionControl:true, scrollWheelZoom:false });
     if (style === 'satellite' || style === 'sat' || style === 'hybrid') {
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -70,7 +71,14 @@
       );
     });
 
-    map.fitBounds(pts, { padding:[90, 90] });
+    var focus = (qs.get('focus') || '').toLowerCase();
+    var zParam = parseInt(qs.get('z'), 10);
+    var target = focus ? ports.filter(function(p){ return p.name.toLowerCase().indexOf(focus) === 0; })[0] : null;
+    if (target) {
+      map.setView(target.ll, isNaN(zParam) ? 13 : zParam);
+    } else {
+      map.fitBounds(pts, { padding:[90, 90] });
+    }
   </script>
 </body>
 </html>
