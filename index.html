@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storm TV</title>
-<!-- receiver v3: page/srcdoc + wakelock -->
+<!-- receiver v4: page/srcdoc + wakelock + input bridge -->
 <style>
   html, body { margin: 0; height: 100%; background: #0a0a0f; color: #ECECF1;
     font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; overflow: hidden; }
@@ -32,16 +32,20 @@
 
   function mount(node) { stage.replaceChildren(node); }
 
+  let appFrame = null;    // the current interactive iframe (url/page) — target for input relay
+  let lastSender = null;  // last sender id — where we forward the app's events back
+
   // One message-driven canvas. Storm decides what the TV shows.
-  // { type: 'url'|'video'|'image'|'html'|'clear', ... }
+  // { type: 'url'|'video'|'image'|'html'|'page'|'clear', ... }
   function render(msg) {
+    appFrame = null;      // cleared on every content swap; set again for url/page below
     switch (msg && msg.type) {
       case 'ping': case 'ready': return;            // control messages — never rendered
       case 'url': {                                   // games, karaoke, YouTube embeds, live pages
         const f = document.createElement('iframe');
         f.src = msg.url;
         f.allow = 'autoplay; fullscreen; encrypted-media; gamepad; microphone; camera';
-        mount(f); break;
+        appFrame = f; mount(f); break;
       }
       case 'video': {                                 // a direct video/HLS URL
         const v = document.createElement('video');
@@ -60,7 +64,7 @@
         const f = document.createElement('iframe');   // srcdoc → private + dynamic (vs 'url' which is public/hosted)
         f.srcdoc = msg.html || '';
         f.allow = 'autoplay; fullscreen; encrypted-media; gamepad; microphone; camera';
-        mount(f); break;
+        appFrame = f; mount(f); break;
       }
       case 'clear':
       default: {
@@ -74,15 +78,32 @@
   const context = cast.framework.CastReceiverContext.getInstance();
   context.addCustomMessageListener(NAMESPACE, (event) => {
     try {
+      lastSender = event.senderId;
+      const msg = event.data;
       // Readiness handshake: the sender pings until we answer, then sends the
-      // real message — so content is never dropped while this page is still
-      // loading the CAF SDK / registering this very listener.
-      if (event.data && event.data.type === 'ping') {
+      // real message — so content is never dropped while this page is still loading.
+      if (msg && msg.type === 'ping') {
         context.sendCustomMessage(NAMESPACE, event.senderId, { type: 'ready' });
         return;
       }
-      render(event.data);
+      // Interaction: relay the input into the running app (chess/map) — no re-render.
+      if (msg && msg.type === 'input') {
+        if (appFrame && appFrame.contentWindow) {
+          appFrame.contentWindow.postMessage({ storm: 'input', action: msg.action, data: msg.data || {} }, '*');
+        }
+        return;
+      }
+      render(msg);
     } catch (e) { console.error('storm render error', e); }
+  });
+
+  // Forward events the running app emits (postMessage {storm:'event',...}) back to Storm.
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (d && d.storm === 'event' && lastSender) {
+      try { context.sendCustomMessage(NAMESPACE, lastSender, { type: 'event', name: d.name, data: d.data }); }
+      catch (err) {}
+    }
   });
   // Stay alive between messages (this is a persistent canvas, not a media session).
   context.start({ disableIdleTimeout: true });
