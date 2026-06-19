@@ -35,6 +35,7 @@
   // { type: 'url'|'video'|'image'|'html'|'clear', ... }
   function render(msg) {
     switch (msg && msg.type) {
+      case 'ping': case 'ready': return;            // control messages — never rendered
       case 'url': {                                   // games, karaoke, YouTube embeds, live pages
         const f = document.createElement('iframe');
         f.src = msg.url;
@@ -65,7 +66,16 @@
 
   const context = cast.framework.CastReceiverContext.getInstance();
   context.addCustomMessageListener(NAMESPACE, (event) => {
-    try { render(event.data); } catch (e) { console.error('storm render error', e); }
+    try {
+      // Readiness handshake: the sender pings until we answer, then sends the
+      // real message — so content is never dropped while this page is still
+      // loading the CAF SDK / registering this very listener.
+      if (event.data && event.data.type === 'ping') {
+        context.sendCustomMessage(NAMESPACE, event.senderId, { type: 'ready' });
+        return;
+      }
+      render(event.data);
+    } catch (e) { console.error('storm render error', e); }
   });
   // Stay alive between messages (this is a persistent canvas, not a media session).
   context.start({ disableIdleTimeout: true });
