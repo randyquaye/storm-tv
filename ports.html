@@ -41,11 +41,23 @@
       { rank:5, name:"Valencia",         country:"Spain",       teu:"~4.9M TEU",  ll:[39.44, -0.32] }
     ];
 
+    // ports v2: tiles param  (?tiles=satellite | dark[default])
+    var style = (new URLSearchParams(location.search).get('tiles') || 'dark').toLowerCase();
     var map = L.map('map', { zoomControl:false, attributionControl:true, scrollWheelZoom:false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains:'abcd', maxZoom:19,
-      attribution:'&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
+    if (style === 'satellite' || style === 'sat' || style === 'hybrid') {
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom:19, attribution:'&copy; Esri, Maxar, Earthstar Geographics'
+      }).addTo(map);
+      // reference overlay so coastlines + place names stay legible over imagery
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom:19, opacity:0.9
+      }).addTo(map);
+    } else {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains:'abcd', maxZoom:19,
+        attribution:'&copy; OpenStreetMap &copy; CARTO'
+      }).addTo(map);
+    }
 
     var pts = [];
     ports.forEach(function(p) {
