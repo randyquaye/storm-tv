@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storm TV</title>
-<!-- receiver v4: page/srcdoc + wakelock + input bridge -->
+<!-- receiver v5: + periodic anti-screensaver sweep -->
 <style>
   html, body { margin: 0; height: 100%; background: #0a0a0f; color: #ECECF1;
     font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; overflow: hidden; }
@@ -18,12 +18,22 @@
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
     border-radius: 3vmin; font-size: 3.2vmin; line-height: 1.5; }
   .card h1, .card h2 { margin-top: 0; }
+  /* Anti-screensaver: a soft light band swept across every ~18s so a static-image
+     detector keeps seeing motion. Tunable via #sweep opacity + the JS interval. */
+  #sweep { position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: 0;
+    background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.14) 50%, transparent 62%); }
+  #sweep.on { animation: stormSweep 1.8s ease-in-out; }
+  @keyframes stormSweep {
+    0% { opacity: 0; transform: translateX(-65%); }
+    12% { opacity: 1; } 88% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(65%); } }
 </style>
 <!-- Google Cast Application Framework (CAF) receiver SDK -->
 <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
   <div id="stage"><div id="idle"><div class="bolt">⚡</div><div class="label">STORM</div></div></div>
+  <div id="sweep"></div>
 
 <script>
   // Custom message channel Storm sends on. Sender uses the same namespace.
@@ -132,6 +142,11 @@
     document.body.appendChild(keep);
     keep.play().catch(() => {});
   } catch (e) {}
+
+  // Periodic light sweep so a static-image screensaver detector keeps seeing motion.
+  const sweepEl = document.getElementById('sweep');
+  function doSweep(){ sweepEl.classList.remove('on'); void sweepEl.offsetWidth; sweepEl.classList.add('on'); }
+  setInterval(doSweep, 18000);
 </script>
 </body>
 </html>
